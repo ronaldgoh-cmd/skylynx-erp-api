@@ -1,3 +1,5 @@
+# main.py
+
 import os
 from typing import Generator
 
@@ -10,7 +12,12 @@ from sqlalchemy.orm import Session
 from db import SessionLocal, engine
 from models import Base, Tenant, User
 from schemas import LoginRequest, RegisterRequest, TokenResponse
-from security import create_access_token, hash_password, verify_password
+from security import (
+    PasswordTooLongError,
+    create_access_token,
+    hash_password,
+    verify_password,
+)
 
 
 def get_db() -> Generator[Session, None, None]:
@@ -25,6 +32,7 @@ def _build_cors_origins() -> list[str]:
     required = {
         "https://app.skylynxdigitalsolutions.com",
         "https://www.skylynxdigitalsolutions.com",
+        "http://localhost:3000",  # local dev
     }
     extra = os.getenv("CORS_ORIGINS", "")
     if extra:
@@ -75,13 +83,23 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> dict:
             detail="Email already registered.",
         )
 
+    try:
+        password_hash = hash_password(payload.password)
+    except PasswordTooLongError as exc:
+        # Return a clean validation error instead of 500
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        )
+
     tenant = Tenant(company_name=payload.company_name)
     user = User(
         tenant=tenant,
         full_name=payload.full_name,
         email=payload.email,
-        password_hash=hash_password(payload.password),
+        password_hash=password_hash,
     )
+
     db.add_all([tenant, user])
     try:
         db.commit()

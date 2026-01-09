@@ -1,12 +1,17 @@
+# security.py
+
 import os
 from datetime import datetime, timedelta, timezone
 
 from jose import jwt
 from passlib.context import CryptContext
 
-
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 JWT_ALGORITHM = "HS256"
+
+
+class PasswordTooLongError(ValueError):
+    """Raised when password exceeds bcrypt's 72-byte limit."""
 
 
 def _get_jwt_secret() -> str:
@@ -17,6 +22,12 @@ def _get_jwt_secret() -> str:
 
 
 def hash_password(password: str) -> str:
+    # bcrypt only supports up to 72 BYTES (not characters).
+    if len(password.encode("utf-8")) > 72:
+        raise PasswordTooLongError(
+            "Password is too long. Please use 72 characters or fewer (ASCII), "
+            "or a shorter password overall."
+        )
     return pwd_context.hash(password)
 
 
