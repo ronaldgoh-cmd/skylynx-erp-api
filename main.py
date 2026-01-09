@@ -51,6 +51,16 @@ def on_startup() -> None:
     Base.metadata.create_all(bind=engine)
 
 
+@app.get("/")
+def root() -> dict:
+    return {
+        "ok": True,
+        "service": "skylynx-api",
+        "docs": "/docs",
+        "health": "/health",
+    }
+
+
 @app.get("/health")
 def health() -> dict:
     return {"ok": True}
