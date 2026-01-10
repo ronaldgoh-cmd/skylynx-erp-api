@@ -1,5 +1,3 @@
-# security.py
-
 import os
 from datetime import datetime, timedelta, timezone
 
@@ -11,7 +9,7 @@ JWT_ALGORITHM = "HS256"
 
 
 class PasswordTooLongError(ValueError):
-    """Raised when password exceeds bcrypt's 72-byte limit."""
+    pass
 
 
 def _get_jwt_secret() -> str:
@@ -22,12 +20,9 @@ def _get_jwt_secret() -> str:
 
 
 def hash_password(password: str) -> str:
-    # bcrypt only supports up to 72 BYTES (not characters).
+    # bcrypt supports max 72 BYTES (not characters)
     if len(password.encode("utf-8")) > 72:
-        raise PasswordTooLongError(
-            "Password is too long. Please use 72 characters or fewer (ASCII), "
-            "or a shorter password overall."
-        )
+        raise PasswordTooLongError("Password too long (max 72 characters).")
     return pwd_context.hash(password)
 
 

@@ -1,5 +1,3 @@
-# main.py
-
 import os
 from typing import Generator
 
@@ -32,7 +30,7 @@ def _build_cors_origins() -> list[str]:
     required = {
         "https://app.skylynxdigitalsolutions.com",
         "https://www.skylynxdigitalsolutions.com",
-        "http://localhost:3000",  # local dev
+        "http://localhost:3000",
     }
     extra = os.getenv("CORS_ORIGINS", "")
     if extra:
@@ -61,12 +59,7 @@ def on_startup() -> None:
 
 @app.get("/")
 def root() -> dict:
-    return {
-        "ok": True,
-        "service": "skylynx-api",
-        "docs": "/docs",
-        "health": "/health",
-    }
+    return {"ok": True, "service": "skylynx-api", "docs": "/docs", "health": "/health"}
 
 
 @app.get("/health")
@@ -86,7 +79,6 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> dict:
     try:
         password_hash = hash_password(payload.password)
     except PasswordTooLongError as exc:
-        # Return a clean validation error instead of 500
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
@@ -99,8 +91,8 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> dict:
         email=payload.email,
         password_hash=password_hash,
     )
-
     db.add_all([tenant, user])
+
     try:
         db.commit()
     except IntegrityError:
