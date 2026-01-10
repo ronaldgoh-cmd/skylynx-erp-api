@@ -52,9 +52,19 @@ app.add_middleware(
 )
 
 
+def _should_create_schema() -> bool:
+    return os.getenv("AUTO_CREATE_SCHEMA", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
 @app.on_event("startup")
 def on_startup() -> None:
-    Base.metadata.create_all(bind=engine)
+    if _should_create_schema():
+        Base.metadata.create_all(bind=engine)
 
 
 @app.get("/")
