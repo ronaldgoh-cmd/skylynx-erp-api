@@ -1,13 +1,17 @@
+import logging
 import os
-from typing import Generator
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from db import SessionLocal, engine
+from app.routers.rbac import router as rbac_router
+from app.security.rbac import MissingPermissionsError
+from app.services.rbac_service import create_default_roles_for_tenant
+from db import engine, get_db
 from models import Base, Tenant, User
 from schemas import LoginRequest, RegisterRequest, TokenResponse
 from security import (
@@ -17,13 +21,8 @@ from security import (
     verify_password,
 )
 
-
-def get_db() -> Generator[Session, None, None]:
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+logger = logging.getLogger("skylynx-api")
+logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO").upper())
 
 
 def _build_cors_origins() -> list[str]:
@@ -51,8 +50,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(rbac_router)
+
+
+@app.exception_handler(MissingPermissionsError)
+def handle_missing_permissions(
+    request: Request, exc: MissingPermissionsError
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_403_FORBIDDEN,
+        content={
+            "error": "forbidden",
+            "missing_permissions": exc.missing_permissions,
+        },
+    )
+
 
 def _should_create_schema() -> bool:
+    """
+    Safety switch. Keep OFF in Cloud Run.
+    Only use for local/dev bootstrap.
+    """
     return os.getenv("AUTO_CREATE_SCHEMA", "").strip().lower() in {
         "1",
         "true",
@@ -64,7 +82,10 @@ def _should_create_schema() -> bool:
 @app.on_event("startup")
 def on_startup() -> None:
     if _should_create_schema():
+        logger.warning("AUTO_CREATE_SCHEMA is enabled -> running Base.metadata.create_all()")
         Base.metadata.create_all(bind=engine)
+    else:
+        logger.info("AUTO_CREATE_SCHEMA is disabled -> NOT running create_all()")
 
 
 @app.get("/")
@@ -102,8 +123,9 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> dict:
         password_hash=password_hash,
     )
     db.add_all([tenant, user])
-
     try:
+        db.flush()
+        create_default_roles_for_tenant(db, tenant, user)
         db.commit()
     except IntegrityError:
         db.rollback()
@@ -111,6 +133,12 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> dict:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Unable to register user.",
         )
+    except RuntimeError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        ) from exc
 
     return {"tenant_id": str(tenant.id), "user_id": str(user.id)}
 

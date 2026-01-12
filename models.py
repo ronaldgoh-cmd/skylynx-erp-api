@@ -41,3 +41,6 @@ class User(Base):
     )
 
     tenant: Mapped["Tenant"] = relationship(back_populates="users")
+    user_roles: Mapped[list["UserRole"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
