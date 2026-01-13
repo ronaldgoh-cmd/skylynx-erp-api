@@ -6,10 +6,18 @@ from models import Tenant, User
 
 DEFAULT_MANAGER_PERMISSIONS = {
     "erp:dashboard:read",
-    "rbac:permissions:read",
-    "rbac:roles:read",
+    "employees:read",
+    "employees:write",
+    "holidays:read",
+    "holidays:write",
+    "dropdowns:read",
 }
-DEFAULT_STAFF_PERMISSIONS = {"erp:dashboard:read"}
+DEFAULT_STAFF_PERMISSIONS = {
+    "erp:dashboard:read",
+    "employees:read",
+    "holidays:read",
+    "dropdowns:read",
+}
 
 
 def create_default_roles_for_tenant(db: Session, tenant: Tenant, user: User) -> None:

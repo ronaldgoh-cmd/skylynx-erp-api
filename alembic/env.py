@@ -7,6 +7,10 @@ from sqlalchemy import engine_from_config, pool
 
 from models import Base
 import app.models.rbac  # noqa: F401
+import app.models.settings  # noqa: F401
+import app.models.employees  # noqa: F401
+import app.models.holidays  # noqa: F401
+import app.models.dropdowns  # noqa: F401
 
 config = context.config
 

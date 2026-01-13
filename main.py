@@ -8,7 +8,11 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.routers.dropdowns import router as dropdown_router
+from app.routers.employees import router as employees_router
+from app.routers.holidays import router as holidays_router
 from app.routers.rbac import router as rbac_router
+from app.routers.settings import router as settings_router
 from app.security.rbac import MissingPermissionsError
 from app.services.rbac_service import create_default_roles_for_tenant
 from db import engine, get_db
@@ -51,6 +55,10 @@ app.add_middleware(
 )
 
 app.include_router(rbac_router)
+app.include_router(settings_router)
+app.include_router(employees_router)
+app.include_router(holidays_router)
+app.include_router(dropdown_router)
 
 
 @app.exception_handler(MissingPermissionsError)
