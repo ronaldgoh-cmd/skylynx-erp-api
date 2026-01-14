@@ -44,11 +44,22 @@ def _build_cors_origins() -> list[str]:
     return sorted(required)
 
 
+def _build_cors_origin_regex() -> str | None:
+    """
+    Optional: allow wildcard origins via regex (e.g. Vercel preview domains).
+    Example value:
+      ^https://.*\\.vercel\\.app$
+    """
+    value = os.getenv("CORS_ORIGIN_REGEX", "").strip()
+    return value or None
+
+
 app = FastAPI(title="Skylynx ERP API")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_build_cors_origins(),
+    allow_origin_regex=_build_cors_origin_regex(),  # <-- added
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
