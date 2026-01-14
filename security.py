@@ -1,4 +1,6 @@
 import os
+import secrets
+import string
 from datetime import datetime, timedelta, timezone
 
 from jose import jwt
@@ -39,3 +41,8 @@ def create_access_token(subject: str, tenant_id: str, expires_in_hours: int = 24
         "exp": int((now + timedelta(hours=expires_in_hours)).timestamp()),
     }
     return jwt.encode(payload, _get_jwt_secret(), algorithm=JWT_ALGORITHM)
+
+
+def generate_temporary_password(length: int = 12) -> str:
+    alphabet = string.ascii_letters + string.digits
+    return "".join(secrets.choice(alphabet) for _ in range(length))

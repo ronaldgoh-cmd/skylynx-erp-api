@@ -34,7 +34,6 @@ class EmployeeBase(BaseModel):
     overtime_rate: Decimal | None = None
     part_time_rate: Decimal | None = None
     levy: Decimal | None = None
-    is_user: bool | None = None
     user_id: uuid.UUID | None = None
 
 

@@ -114,7 +114,6 @@ def list_employees(
     q: str | None = None,
     employment_status: str | None = None,
     position: str | None = None,
-    is_user: bool | None = None,
     user: User = Depends(require_permissions("employees:read")),
     db: Session = Depends(get_db),
 ) -> list[EmployeeResponse]:
@@ -132,9 +131,6 @@ def list_employees(
         stmt = stmt.where(Employee.employment_status == employment_status)
     if position:
         stmt = stmt.where(Employee.position == position)
-    if is_user is not None:
-        stmt = stmt.where(Employee.is_user == is_user)
-
     employees = db.scalars(stmt.order_by(Employee.created_at.desc())).all()
     return employees
 
@@ -182,7 +178,6 @@ def create_employee(
     employee = Employee(
         tenant_id=user.tenant_id,
         employee_code=employee_code,
-        is_user=payload.is_user if payload.is_user is not None else bool(linked_user_id),
         user_id=linked_user_id,
         full_name=payload.full_name,
         email=payload.email,

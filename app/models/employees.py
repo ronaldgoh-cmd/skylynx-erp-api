@@ -22,6 +22,7 @@ class Employee(Base):
         UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False
     )
     employee_code: Mapped[str] = mapped_column(String(32), nullable=False)
+    # Deprecated: keep for backward compatibility; do not use for auth.
     is_user: Mapped[bool] = mapped_column(Boolean, default=False)
     user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)

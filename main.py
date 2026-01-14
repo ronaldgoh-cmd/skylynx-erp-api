@@ -13,6 +13,8 @@ from app.routers.employees import router as employees_router
 from app.routers.holidays import router as holidays_router
 from app.routers.rbac import router as rbac_router
 from app.routers.settings import router as settings_router
+from app.routers.subscriber_auth import router as subscriber_router
+from app.routers.tenant_users import router as tenant_users_router
 from app.security.rbac import MissingPermissionsError
 from app.services.rbac_service import create_default_roles_for_tenant
 from db import engine, get_db
@@ -54,6 +56,15 @@ def _build_cors_origin_regex() -> str | None:
     return value or None
 
 
+def _split_full_name(full_name: str) -> tuple[str | None, str | None]:
+    parts = [part for part in full_name.split() if part]
+    if not parts:
+        return None, None
+    if len(parts) == 1:
+        return parts[0], None
+    return parts[0], " ".join(parts[1:])
+
+
 app = FastAPI(title="Skylynx ERP API")
 
 app.add_middleware(
@@ -70,6 +81,8 @@ app.include_router(settings_router)
 app.include_router(employees_router)
 app.include_router(holidays_router)
 app.include_router(dropdown_router)
+app.include_router(subscriber_router)
+app.include_router(tenant_users_router)
 
 
 @app.exception_handler(MissingPermissionsError)
@@ -135,10 +148,14 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> dict:
         )
 
     tenant = Tenant(company_name=payload.company_name)
+    first_name, last_name = _split_full_name(payload.full_name)
     user = User(
         tenant=tenant,
+        first_name=first_name,
+        last_name=last_name,
         full_name=payload.full_name,
         email=payload.email,
+        account_type="subscriber",
         password_hash=password_hash,
     )
     db.add_all([tenant, user])
