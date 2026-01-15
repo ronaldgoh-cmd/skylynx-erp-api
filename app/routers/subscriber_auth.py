@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.schemas.auth import SubscriberLoginRequest, SubscriberRegisterRequest
 from app.services.rbac_service import create_default_roles_for_tenant
 from db import get_db
-from models import Tenant, User
+from models import Tenant, User, UserWorkspace
 from schemas import TokenResponse
 from security import (
     PasswordTooLongError,
@@ -56,6 +56,7 @@ def subscriber_register(
     db.add_all([tenant, user])
     try:
         db.flush()
+        db.add(UserWorkspace(user_id=user.id, tenant_id=tenant.id, is_owner=True))
         create_default_roles_for_tenant(db, tenant, user)
         db.commit()
     except IntegrityError as exc:

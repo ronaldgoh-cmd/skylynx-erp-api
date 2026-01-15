@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.models.employees import Employee
 from app.models.rbac import Role, UserRole
 from app.schemas.tenant_users import (
     TenantUserCreateRequest,
@@ -13,9 +14,10 @@ from app.schemas.tenant_users import (
     TenantUserListItem,
     TenantUserResetPasswordResponse,
 )
+from app.security.auth import get_active_tenant_id
 from app.security.rbac import require_permissions
 from db import get_db
-from models import User
+from models import User, UserWorkspace
 from security import PasswordTooLongError, generate_temporary_password, hash_password
 
 router = APIRouter(prefix="/tenant/users", tags=["tenant-users"])
@@ -32,8 +34,9 @@ def list_tenant_users(
     user: User = Depends(require_permissions("tenant_users:read")),
     db: Session = Depends(get_db),
 ) -> list[TenantUserListItem]:
+    tenant_id = get_active_tenant_id(user)
     users = db.scalars(
-        select(User).where(User.tenant_id == user.tenant_id).order_by(User.created_at)
+        select(User).where(User.tenant_id == tenant_id).order_by(User.created_at)
     ).all()
     if not users:
         return []
@@ -69,8 +72,9 @@ def create_tenant_user(
     user: User = Depends(require_permissions("tenant_users:write")),
     db: Session = Depends(get_db),
 ) -> TenantUserCreateResponse:
+    tenant_id = get_active_tenant_id(user)
     staff_role = db.scalar(
-        select(Role).where(Role.tenant_id == user.tenant_id, Role.name == DEFAULT_TENANT_USER_ROLE)
+        select(Role).where(Role.tenant_id == tenant_id, Role.name == DEFAULT_TENANT_USER_ROLE)
     )
     if not staff_role:
         raise HTTPException(
@@ -88,7 +92,7 @@ def create_tenant_user(
         ) from exc
 
     new_user = User(
-        tenant_id=user.tenant_id,
+        tenant_id=tenant_id,
         first_name=payload.first_name,
         last_name=payload.last_name,
         full_name=_build_full_name(payload.first_name, payload.last_name),
@@ -100,6 +104,34 @@ def create_tenant_user(
     db.add(new_user)
     try:
         db.flush()
+        db.add(
+            UserWorkspace(
+                user_id=new_user.id,
+                tenant_id=tenant_id,
+                is_owner=False,
+            )
+        )
+        if payload.employee_id:
+            employee = db.scalar(
+                select(Employee).where(
+                    Employee.id == payload.employee_id,
+                    Employee.tenant_id == tenant_id,
+                )
+            )
+            if not employee:
+                db.rollback()
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Employee not found.",
+                )
+            if employee.user_id:
+                db.rollback()
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Employee already linked to a user.",
+                )
+            employee.user_id = new_user.id
+            employee.is_user = True
         db.add(UserRole(user_id=new_user.id, role_id=staff_role.id))
         db.commit()
     except IntegrityError as exc:
@@ -125,8 +157,9 @@ def reset_tenant_user_password(
     user: User = Depends(require_permissions("tenant_users:reset_password")),
     db: Session = Depends(get_db),
 ) -> TenantUserResetPasswordResponse:
+    tenant_id = get_active_tenant_id(user)
     target_user = db.scalar(
-        select(User).where(User.id == user_id, User.tenant_id == user.tenant_id)
+        select(User).where(User.id == user_id, User.tenant_id == tenant_id)
     )
     if not target_user:
         raise HTTPException(

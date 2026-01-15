@@ -22,7 +22,7 @@ def list_dropdown_options(
     user: User = Depends(require_permissions("dropdowns:read")),
     db: Session = Depends(get_db),
 ) -> list[DropdownOptionResponse]:
-    stmt = select(DropdownOption).where(DropdownOption.tenant_id == user.tenant_id)
+    stmt = select(DropdownOption).where(DropdownOption.tenant_id == user.active_tenant_id)
     if category:
         stmt = stmt.where(DropdownOption.category == category)
     options = db.scalars(
@@ -42,7 +42,7 @@ def create_dropdown_option(
     db: Session = Depends(get_db),
 ) -> DropdownOptionResponse:
     option = DropdownOption(
-        tenant_id=user.tenant_id,
+        tenant_id=user.active_tenant_id,
         category=payload.category,
         value=payload.value,
         sort_order=payload.sort_order,
@@ -64,7 +64,7 @@ def delete_dropdown_option(
 ) -> None:
     option = db.scalar(
         select(DropdownOption).where(
-            DropdownOption.id == option_id, DropdownOption.tenant_id == user.tenant_id
+            DropdownOption.id == option_id, DropdownOption.tenant_id == user.active_tenant_id
         )
     )
     if not option:

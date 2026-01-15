@@ -33,7 +33,7 @@ def list_holiday_groups(
 ) -> list[HolidayGroupResponse]:
     groups = db.scalars(
         select(HolidayGroup)
-        .where(HolidayGroup.tenant_id == user.tenant_id)
+        .where(HolidayGroup.tenant_id == user.active_tenant_id)
         .order_by(HolidayGroup.name)
     ).all()
     return groups
@@ -49,7 +49,7 @@ def create_holiday_group(
     user: User = Depends(require_permissions("holidays:write")),
     db: Session = Depends(get_db),
 ) -> HolidayGroupResponse:
-    group = HolidayGroup(tenant_id=user.tenant_id, name=payload.name)
+    group = HolidayGroup(tenant_id=user.active_tenant_id, name=payload.name)
     db.add(group)
     db.commit()
     db.refresh(group)
@@ -67,7 +67,7 @@ def delete_holiday_group(
 ) -> None:
     group = db.scalar(
         select(HolidayGroup).where(
-            HolidayGroup.id == group_id, HolidayGroup.tenant_id == user.tenant_id
+            HolidayGroup.id == group_id, HolidayGroup.tenant_id == user.active_tenant_id
         )
     )
     if not group:
@@ -88,12 +88,12 @@ def list_holidays(
     user: User = Depends(require_permissions("holidays:read")),
     db: Session = Depends(get_db),
 ) -> list[HolidayResponse]:
-    stmt = select(Holiday).where(Holiday.tenant_id == user.tenant_id)
+    stmt = select(Holiday).where(Holiday.tenant_id == user.active_tenant_id)
     if holiday_group_id:
         group = db.scalar(
             select(HolidayGroup.id).where(
                 HolidayGroup.id == holiday_group_id,
-                HolidayGroup.tenant_id == user.tenant_id,
+                HolidayGroup.tenant_id == user.active_tenant_id,
             )
         )
         if not group:
@@ -120,7 +120,7 @@ def create_holiday(
         group = db.scalar(
             select(HolidayGroup.id).where(
                 HolidayGroup.id == payload.holiday_group_id,
-                HolidayGroup.tenant_id == user.tenant_id,
+                HolidayGroup.tenant_id == user.active_tenant_id,
             )
         )
         if not group:
@@ -130,7 +130,7 @@ def create_holiday(
             )
 
     holiday = Holiday(
-        tenant_id=user.tenant_id,
+        tenant_id=user.active_tenant_id,
         holiday_group_id=payload.holiday_group_id,
         name=payload.name,
         date=payload.date,
@@ -151,7 +151,7 @@ def delete_holiday(
     db: Session = Depends(get_db),
 ) -> None:
     holiday = db.scalar(
-        select(Holiday).where(Holiday.id == holiday_id, Holiday.tenant_id == user.tenant_id)
+        select(Holiday).where(Holiday.id == holiday_id, Holiday.tenant_id == user.active_tenant_id)
     )
     if not holiday:
         raise HTTPException(
@@ -184,7 +184,7 @@ def import_holidays(
         group = db.scalar(
             select(HolidayGroup.id).where(
                 HolidayGroup.id == group_id,
-                HolidayGroup.tenant_id == user.tenant_id,
+                HolidayGroup.tenant_id == user.active_tenant_id,
             )
         )
         if not group:
@@ -214,7 +214,7 @@ def import_holidays(
 
         db.add(
             Holiday(
-                tenant_id=user.tenant_id,
+                tenant_id=user.active_tenant_id,
                 holiday_group_id=group_id,
                 name=name,
                 date=parsed_date,

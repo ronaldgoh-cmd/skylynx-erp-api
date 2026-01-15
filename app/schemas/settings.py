@@ -12,7 +12,6 @@ class CompanySettingsResponse(BaseModel):
     company_name: str
     details_line1: str | None = None
     details_line2: str | None = None
-    logo_url: str | None = None
     about_text: str | None = None
     version: str | None = None
     updated_at: datetime | None = None
@@ -22,7 +21,6 @@ class CompanySettingsUpdateRequest(BaseModel):
     company_name: str | None = Field(default=None, max_length=255)
     details_line1: str | None = Field(default=None, max_length=255)
     details_line2: str | None = Field(default=None, max_length=255)
-    logo_url: str | None = Field(default=None, max_length=512)
     about_text: str | None = None
     version: str | None = Field(default=None, max_length=50)
 

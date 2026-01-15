@@ -11,12 +11,18 @@ DEFAULT_MANAGER_PERMISSIONS = {
     "holidays:read",
     "holidays:write",
     "dropdowns:read",
+    "workspaces:read",
+    "profile:read",
+    "profile:write",
 }
 DEFAULT_STAFF_PERMISSIONS = {
     "erp:dashboard:read",
     "employees:read",
     "holidays:read",
     "dropdowns:read",
+    "workspaces:read",
+    "profile:read",
+    "profile:write",
 }
 
 

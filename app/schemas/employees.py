@@ -55,6 +55,12 @@ class EmployeeResponse(EmployeeBase):
     updated_at: datetime | None = None
 
 
+class EmployeeUnlinkedUserResponse(BaseModel):
+    id: uuid.UUID
+    full_name: str
+    employee_code: str
+
+
 class EmployeeSalaryHistoryCreateRequest(BaseModel):
     amount: Decimal
     start_date: date

@@ -22,6 +22,7 @@ class TenantUserCreateRequest(BaseModel):
     first_name: str = Field(..., min_length=1, max_length=100)
     last_name: str = Field(..., min_length=1, max_length=100)
     email: EmailStr
+    employee_id: uuid.UUID | None = None
 
 
 class TenantUserCreateResponse(BaseModel):

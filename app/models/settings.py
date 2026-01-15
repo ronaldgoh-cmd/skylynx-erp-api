@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text
+from sqlalchemy import DateTime, ForeignKey, LargeBinary, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -18,6 +18,8 @@ class CompanySettings(Base):
     details_line1: Mapped[str | None] = mapped_column(String(255))
     details_line2: Mapped[str | None] = mapped_column(String(255))
     logo_url: Mapped[str | None] = mapped_column(String(512))
+    logo_bytes: Mapped[bytes | None] = mapped_column(LargeBinary)
+    logo_mime: Mapped[str | None] = mapped_column(String(100))
     about_text: Mapped[str | None] = mapped_column(Text)
     version: Mapped[str | None] = mapped_column(String(50))
     updated_at: Mapped[datetime] = mapped_column(

@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.rbac import Permission, Role, RolePermission, UserRole
-from app.security.auth import get_current_user
+from app.security.auth import get_active_tenant_id, get_current_user
 from db import get_db
 from models import User
 
@@ -16,13 +16,15 @@ class MissingPermissionsError(Exception):
         self.missing_permissions = missing_permissions
 
 
-def get_user_permission_codes(db: Session, user_id: uuid.UUID) -> list[str]:
+def get_user_permission_codes(
+    db: Session, user_id: uuid.UUID, tenant_id: uuid.UUID
+) -> list[str]:
     stmt = (
         select(Permission.code)
         .join(RolePermission, Permission.id == RolePermission.permission_id)
         .join(Role, Role.id == RolePermission.role_id)
         .join(UserRole, UserRole.role_id == Role.id)
-        .where(UserRole.user_id == user_id)
+        .where(UserRole.user_id == user_id, Role.tenant_id == tenant_id)
     )
     codes = db.scalars(stmt).all()
     return sorted(set(codes))
@@ -38,7 +40,8 @@ def require_permissions(*codes: str):
         if not required:
             return user
 
-        user_codes = get_user_permission_codes(db, user.id)
+        tenant_id = get_active_tenant_id(user)
+        user_codes = get_user_permission_codes(db, user.id, tenant_id)
         missing = [code for code in required if code not in user_codes]
         if missing:
             raise MissingPermissionsError(missing)

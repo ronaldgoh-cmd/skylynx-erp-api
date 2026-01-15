@@ -11,14 +11,16 @@ from sqlalchemy.orm import Session
 from app.routers.dropdowns import router as dropdown_router
 from app.routers.employees import router as employees_router
 from app.routers.holidays import router as holidays_router
+from app.routers.profile import router as profile_router
 from app.routers.rbac import router as rbac_router
 from app.routers.settings import router as settings_router
 from app.routers.subscriber_auth import router as subscriber_router
 from app.routers.tenant_users import router as tenant_users_router
+from app.routers.workspaces import router as workspaces_router
 from app.security.rbac import MissingPermissionsError
 from app.services.rbac_service import create_default_roles_for_tenant
 from db import engine, get_db
-from models import Base, Tenant, User
+from models import Base, Tenant, User, UserWorkspace
 from schemas import LoginRequest, RegisterRequest, TokenResponse
 from security import (
     PasswordTooLongError,
@@ -83,6 +85,8 @@ app.include_router(holidays_router)
 app.include_router(dropdown_router)
 app.include_router(subscriber_router)
 app.include_router(tenant_users_router)
+app.include_router(workspaces_router)
+app.include_router(profile_router)
 
 
 @app.exception_handler(MissingPermissionsError)
@@ -161,6 +165,7 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> dict:
     db.add_all([tenant, user])
     try:
         db.flush()
+        db.add(UserWorkspace(user_id=user.id, tenant_id=tenant.id, is_owner=True))
         create_default_roles_for_tenant(db, tenant, user)
         db.commit()
     except IntegrityError:

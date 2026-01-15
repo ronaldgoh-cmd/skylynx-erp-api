@@ -21,7 +21,7 @@ from app.schemas.rbac import (
     UserRoleUpdateResponse,
     UserRolesResponse,
 )
-from app.security.auth import get_current_user
+from app.security.auth import get_active_tenant_id, get_current_user
 from app.security.rbac import get_user_permission_codes, require_permissions
 from app.services.rbac_service import update_role_permissions
 from db import get_db
@@ -35,10 +35,11 @@ def rbac_me(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> RbacMeResponse:
-    permissions = get_user_permission_codes(db, user.id)
+    tenant_id = get_active_tenant_id(user)
+    permissions = get_user_permission_codes(db, user.id, tenant_id)
     return RbacMeResponse(
         user_id=str(user.id),
-        tenant_id=str(user.tenant_id),
+        tenant_id=str(tenant_id),
         permissions=permissions,
     )
 
@@ -62,7 +63,7 @@ def list_roles(
     db: Session = Depends(get_db),
 ) -> list[RoleOut]:
     roles = db.scalars(
-        select(Role).where(Role.tenant_id == user.tenant_id).order_by(Role.name)
+        select(Role).where(Role.tenant_id == user.active_tenant_id).order_by(Role.name)
     ).all()
     return roles
 
@@ -78,7 +79,7 @@ def create_role(
     db: Session = Depends(get_db),
 ) -> RoleOut:
     role = Role(
-        tenant_id=user.tenant_id,
+        tenant_id=user.active_tenant_id,
         name=payload.name,
         description=payload.description,
     )
@@ -108,7 +109,7 @@ def update_role(
     db: Session = Depends(get_db),
 ) -> RoleOut:
     role = db.scalar(
-        select(Role).where(Role.id == role_id, Role.tenant_id == user.tenant_id)
+        select(Role).where(Role.id == role_id, Role.tenant_id == user.active_tenant_id)
     )
     if not role:
         raise HTTPException(
@@ -144,7 +145,7 @@ def get_role_permissions(
     db: Session = Depends(get_db),
 ) -> RolePermissionsResponse:
     role = db.scalar(
-        select(Role).where(Role.id == role_id, Role.tenant_id == user.tenant_id)
+        select(Role).where(Role.id == role_id, Role.tenant_id == user.active_tenant_id)
     )
     if not role:
         raise HTTPException(
@@ -172,7 +173,7 @@ def replace_role_permissions(
     db: Session = Depends(get_db),
 ) -> RolePermissionsUpdateResponse:
     role = db.scalar(
-        select(Role).where(Role.id == role_id, Role.tenant_id == user.tenant_id)
+        select(Role).where(Role.id == role_id, Role.tenant_id == user.active_tenant_id)
     )
     if not role:
         raise HTTPException(
@@ -201,7 +202,9 @@ def list_users(
     db: Session = Depends(get_db),
 ) -> list[UserListItem]:
     users = db.scalars(
-        select(User).where(User.tenant_id == user.tenant_id).order_by(User.created_at)
+        select(User)
+        .where(User.tenant_id == user.active_tenant_id)
+        .order_by(User.created_at)
     ).all()
     if not users:
         return []
@@ -240,7 +243,8 @@ def get_user_roles(
     db: Session = Depends(get_db),
 ) -> UserRolesResponse:
     target_user = db.scalar(
-        select(User).where(User.id == user_id, User.tenant_id == user.tenant_id)
+        select(User)
+        .where(User.id == user_id, User.tenant_id == user.active_tenant_id)
     )
     if not target_user:
         raise HTTPException(
@@ -271,7 +275,8 @@ def update_user_roles(
     db: Session = Depends(get_db),
 ) -> UserRoleUpdateResponse:
     target_user = db.scalar(
-        select(User).where(User.id == user_id, User.tenant_id == user.tenant_id)
+        select(User)
+        .where(User.id == user_id, User.tenant_id == user.active_tenant_id)
     )
     if not target_user:
         raise HTTPException(
@@ -284,7 +289,7 @@ def update_user_roles(
     if role_ids:
         roles = db.scalars(
             select(Role).where(
-                Role.id.in_(role_ids), Role.tenant_id == user.tenant_id
+                Role.id.in_(role_ids), Role.tenant_id == user.active_tenant_id
             )
         ).all()
         if len(roles) != len(role_ids):

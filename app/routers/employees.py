@@ -20,6 +20,7 @@ from app.schemas.employees import (
     EmployeeResponse,
     EmployeeSalaryHistoryCreateRequest,
     EmployeeSalaryHistoryResponse,
+    EmployeeUnlinkedUserResponse,
     EmployeeUpdateRequest,
     WorkScheduleResponse,
     WorkScheduleUpdateRequest,
@@ -65,7 +66,7 @@ def get_employee_id_format(
     user: User = Depends(require_permissions("employee_settings:read")),
     db: Session = Depends(get_db),
 ) -> EmployeeIdFormatResponse:
-    settings, created = _ensure_employee_settings(db, user.tenant_id, for_update=False)
+    settings, created = _ensure_employee_settings(db, user.active_tenant_id, for_update=False)
     if created:
         db.commit()
         db.refresh(settings)
@@ -87,7 +88,7 @@ def update_employee_id_format(
     user: User = Depends(require_permissions("employee_settings:write")),
     db: Session = Depends(get_db),
 ) -> EmployeeIdFormatResponse:
-    settings, _ = _ensure_employee_settings(db, user.tenant_id, for_update=True)
+    settings, _ = _ensure_employee_settings(db, user.active_tenant_id, for_update=True)
     if payload.id_prefix is not None:
         settings.id_prefix = payload.id_prefix
     if payload.zero_padding is not None:
@@ -117,7 +118,7 @@ def list_employees(
     user: User = Depends(require_permissions("employees:read")),
     db: Session = Depends(get_db),
 ) -> list[EmployeeResponse]:
-    stmt = select(Employee).where(Employee.tenant_id == user.tenant_id)
+    stmt = select(Employee).where(Employee.tenant_id == user.active_tenant_id)
     if q:
         like = f"%{q}%"
         stmt = stmt.where(
@@ -135,6 +136,29 @@ def list_employees(
     return employees
 
 
+@router.get(
+    "/employees/unlinked-users",
+    response_model=list[EmployeeUnlinkedUserResponse],
+)
+def list_unlinked_employees(
+    user: User = Depends(require_permissions("employees:read")),
+    db: Session = Depends(get_db),
+) -> list[EmployeeUnlinkedUserResponse]:
+    employees = db.scalars(
+        select(Employee)
+        .where(Employee.tenant_id == user.active_tenant_id, Employee.user_id.is_(None))
+        .order_by(Employee.full_name)
+    ).all()
+    return [
+        EmployeeUnlinkedUserResponse(
+            id=employee.id,
+            full_name=employee.full_name,
+            employee_code=employee.employee_code,
+        )
+        for employee in employees
+    ]
+
+
 @router.post(
     "/employees",
     response_model=EmployeeResponse,
@@ -148,7 +172,7 @@ def create_employee(
     linked_user_id = payload.user_id
     if linked_user_id:
         linked_user = db.scalar(
-            select(User).where(User.id == linked_user_id, User.tenant_id == user.tenant_id)
+            select(User).where(User.id == linked_user_id, User.tenant_id == user.active_tenant_id)
         )
         if not linked_user:
             raise HTTPException(
@@ -161,7 +185,7 @@ def create_employee(
         group = db.scalar(
             select(HolidayGroup).where(
                 HolidayGroup.id == holiday_group_id,
-                HolidayGroup.tenant_id == user.tenant_id,
+                HolidayGroup.tenant_id == user.active_tenant_id,
             )
         )
         if not group:
@@ -170,13 +194,13 @@ def create_employee(
                 detail="Holiday group not found.",
             )
 
-    settings, _ = _ensure_employee_settings(db, user.tenant_id, for_update=True)
+    settings, _ = _ensure_employee_settings(db, user.active_tenant_id, for_update=True)
     employee_code = _build_employee_code(settings)
     settings.next_sequence += 1
     settings.updated_at = datetime.utcnow()
 
     employee = Employee(
-        tenant_id=user.tenant_id,
+        tenant_id=user.active_tenant_id,
         employee_code=employee_code,
         user_id=linked_user_id,
         full_name=payload.full_name,
@@ -234,7 +258,7 @@ def get_employee(
     db: Session = Depends(get_db),
 ) -> EmployeeResponse:
     employee = db.scalar(
-        select(Employee).where(Employee.id == employee_id, Employee.tenant_id == user.tenant_id)
+        select(Employee).where(Employee.id == employee_id, Employee.tenant_id == user.active_tenant_id)
     )
     if not employee:
         raise HTTPException(
@@ -255,7 +279,7 @@ def update_employee(
     db: Session = Depends(get_db),
 ) -> EmployeeResponse:
     employee = db.scalar(
-        select(Employee).where(Employee.id == employee_id, Employee.tenant_id == user.tenant_id)
+        select(Employee).where(Employee.id == employee_id, Employee.tenant_id == user.active_tenant_id)
     )
     if not employee:
         raise HTTPException(
@@ -265,7 +289,7 @@ def update_employee(
 
     if payload.user_id is not None:
         linked_user = db.scalar(
-            select(User).where(User.id == payload.user_id, User.tenant_id == user.tenant_id)
+            select(User).where(User.id == payload.user_id, User.tenant_id == user.active_tenant_id)
         )
         if not linked_user:
             raise HTTPException(
@@ -278,7 +302,7 @@ def update_employee(
         group = db.scalar(
             select(HolidayGroup).where(
                 HolidayGroup.id == payload.holiday_group_id,
-                HolidayGroup.tenant_id == user.tenant_id,
+                HolidayGroup.tenant_id == user.active_tenant_id,
             )
         )
         if not group:
@@ -309,7 +333,7 @@ def delete_employee(
     db: Session = Depends(get_db),
 ) -> None:
     employee = db.scalar(
-        select(Employee).where(Employee.id == employee_id, Employee.tenant_id == user.tenant_id)
+        select(Employee).where(Employee.id == employee_id, Employee.tenant_id == user.active_tenant_id)
     )
     if not employee:
         raise HTTPException(
@@ -331,7 +355,7 @@ def list_salary_history(
     db: Session = Depends(get_db),
 ) -> list[EmployeeSalaryHistoryResponse]:
     employee = db.scalar(
-        select(Employee.id).where(Employee.id == employee_id, Employee.tenant_id == user.tenant_id)
+        select(Employee.id).where(Employee.id == employee_id, Employee.tenant_id == user.active_tenant_id)
     )
     if not employee:
         raise HTTPException(
@@ -359,7 +383,7 @@ def create_salary_history(
     db: Session = Depends(get_db),
 ) -> EmployeeSalaryHistoryResponse:
     employee = db.scalar(
-        select(Employee.id).where(Employee.id == employee_id, Employee.tenant_id == user.tenant_id)
+        select(Employee.id).where(Employee.id == employee_id, Employee.tenant_id == user.active_tenant_id)
     )
     if not employee:
         raise HTTPException(
@@ -395,7 +419,7 @@ def delete_salary_history(
         .where(
             EmployeeSalaryHistory.id == row_id,
             EmployeeSalaryHistory.employee_id == employee_id,
-            Employee.tenant_id == user.tenant_id,
+            Employee.tenant_id == user.active_tenant_id,
         )
     )
     if not history:
@@ -418,7 +442,7 @@ def get_work_schedule(
     db: Session = Depends(get_db),
 ) -> WorkScheduleResponse:
     employee = db.scalar(
-        select(Employee.id).where(Employee.id == employee_id, Employee.tenant_id == user.tenant_id)
+        select(Employee.id).where(Employee.id == employee_id, Employee.tenant_id == user.active_tenant_id)
     )
     if not employee:
         raise HTTPException(
@@ -447,7 +471,7 @@ def update_work_schedule(
     db: Session = Depends(get_db),
 ) -> WorkScheduleResponse:
     employee = db.scalar(
-        select(Employee.id).where(Employee.id == employee_id, Employee.tenant_id == user.tenant_id)
+        select(Employee.id).where(Employee.id == employee_id, Employee.tenant_id == user.active_tenant_id)
     )
     if not employee:
         raise HTTPException(
