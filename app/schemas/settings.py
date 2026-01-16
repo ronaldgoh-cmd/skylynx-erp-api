@@ -12,6 +12,7 @@ class CompanySettingsResponse(BaseModel):
     company_name: str
     details_line1: str | None = None
     details_line2: str | None = None
+    logo_url: str | None = None
     about_text: str | None = None
     version: str | None = None
     updated_at: datetime | None = None

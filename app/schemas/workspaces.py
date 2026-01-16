@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 class WorkspaceListItem(BaseModel):
     tenant_id: uuid.UUID
     company_name: str
+    is_owner: bool
 
 
 class WorkspaceCreateRequest(BaseModel):

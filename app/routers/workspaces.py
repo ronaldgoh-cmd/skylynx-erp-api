@@ -26,14 +26,18 @@ def list_workspaces(
     db: Session = Depends(get_db),
 ) -> list[WorkspaceListItem]:
     rows = db.execute(
-        select(UserWorkspace.tenant_id, Tenant.company_name)
+        select(UserWorkspace.tenant_id, Tenant.company_name, UserWorkspace.is_owner)
         .join(Tenant, Tenant.id == UserWorkspace.tenant_id)
         .where(UserWorkspace.user_id == user.id)
         .order_by(Tenant.company_name)
     ).all()
     return [
-        WorkspaceListItem(tenant_id=tenant_id, company_name=company_name)
-        for tenant_id, company_name in rows
+        WorkspaceListItem(
+            tenant_id=tenant_id,
+            company_name=company_name,
+            is_owner=is_owner,
+        )
+        for tenant_id, company_name, is_owner in rows
     ]
 
 

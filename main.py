@@ -134,6 +134,21 @@ def health() -> dict:
     return {"ok": True}
 
 
+@app.get("/__routes")
+def list_routes() -> dict:
+    paths = sorted({route.path for route in app.routes})
+    return {"paths": paths}
+
+
+@app.get("/__build")
+def get_build() -> dict:
+    return {
+        "service": "skylynx-api",
+        "git_sha": os.getenv("GIT_SHA", "unknown"),
+        "build_time_utc": os.getenv("BUILD_TIME_UTC", "unknown"),
+    }
+
+
 @app.post("/auth/register", status_code=status.HTTP_201_CREATED)
 def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> dict:
     existing = db.scalar(select(User).where(User.email == payload.email))
