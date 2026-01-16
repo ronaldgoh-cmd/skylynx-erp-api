@@ -23,13 +23,16 @@ class EmployeeBase(BaseModel):
     employment_pass: str | None = Field(default=None, max_length=50)
     work_permit_number: str | None = Field(default=None, max_length=100)
     position: str | None = Field(default=None, max_length=100)
+    department: str | None = Field(default=None, max_length=100)
     employment_type: str | None = Field(default=None, max_length=50)
     join_date: date | None = None
     exit_date: date | None = None
     holiday_group_id: uuid.UUID | None = None
     bank_name: str | None = Field(default=None, max_length=100)
     bank_account_number: str | None = Field(default=None, max_length=100)
+    payment_method: str | None = Field(default=None, max_length=100)
     incentives: Decimal | None = None
+    bonus: Decimal | None = None
     allowance: Decimal | None = None
     overtime_rate: Decimal | None = None
     part_time_rate: Decimal | None = None

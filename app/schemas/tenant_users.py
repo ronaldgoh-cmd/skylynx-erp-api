@@ -34,3 +34,25 @@ class TenantUserCreateResponse(BaseModel):
 class TenantUserResetPasswordResponse(BaseModel):
     user_id: uuid.UUID
     temp_password: str
+
+
+class TenantUserEmployeeSummary(BaseModel):
+    id: uuid.UUID
+    full_name: str
+    employee_code: str
+
+
+class TenantUserUpdateRequest(BaseModel):
+    employee_id: uuid.UUID | None = None
+
+
+class TenantUserResponse(BaseModel):
+    id: uuid.UUID
+    first_name: str | None = None
+    last_name: str | None = None
+    email: str
+    account_type: AccountType
+    created_at: datetime | None = None
+    roles: list[str] = Field(default_factory=list)
+    must_change_password: bool
+    employee: TenantUserEmployeeSummary | None = None

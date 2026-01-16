@@ -219,13 +219,16 @@ def create_employee(
         employment_pass=payload.employment_pass,
         work_permit_number=payload.work_permit_number,
         position=payload.position,
+        department=payload.department,
         employment_type=payload.employment_type,
         join_date=payload.join_date,
         exit_date=payload.exit_date,
         holiday_group_id=payload.holiday_group_id,
         bank_name=payload.bank_name,
         bank_account_number=payload.bank_account_number,
+        payment_method=payload.payment_method,
         incentives=payload.incentives,
+        bonus=payload.bonus,
         allowance=payload.allowance,
         overtime_rate=payload.overtime_rate,
         part_time_rate=payload.part_time_rate,
@@ -269,6 +272,10 @@ def get_employee(
 
 
 @router.patch(
+    "/employees/{employee_id}",
+    response_model=EmployeeResponse,
+)
+@router.put(
     "/employees/{employee_id}",
     response_model=EmployeeResponse,
 )

@@ -11,8 +11,11 @@ from app.models.rbac import Role, UserRole
 from app.schemas.tenant_users import (
     TenantUserCreateRequest,
     TenantUserCreateResponse,
+    TenantUserEmployeeSummary,
     TenantUserListItem,
+    TenantUserResponse,
     TenantUserResetPasswordResponse,
+    TenantUserUpdateRequest,
 )
 from app.security.auth import get_active_tenant_id
 from app.security.rbac import require_permissions
@@ -145,6 +148,105 @@ def create_tenant_user(
         id=new_user.id,
         email=new_user.email,
         temp_password=temp_password,
+    )
+
+
+def _get_employee_summary(
+    db: Session, tenant_id: UUID, user_id: UUID
+) -> TenantUserEmployeeSummary | None:
+    employee = db.scalar(
+        select(Employee).where(
+            Employee.user_id == user_id,
+            Employee.tenant_id == tenant_id,
+        )
+    )
+    if not employee:
+        return None
+    return TenantUserEmployeeSummary(
+        id=employee.id,
+        full_name=employee.full_name,
+        employee_code=employee.employee_code,
+    )
+
+
+@router.patch("/{user_id}", response_model=TenantUserResponse)
+@router.put("/{user_id}", response_model=TenantUserResponse)
+def update_tenant_user(
+    user_id: UUID,
+    payload: TenantUserUpdateRequest,
+    user: User = Depends(require_permissions("tenant_users:write")),
+    db: Session = Depends(get_db),
+) -> TenantUserResponse:
+    tenant_id = get_active_tenant_id(user)
+    target_user = db.scalar(
+        select(User).where(User.id == user_id, User.tenant_id == tenant_id)
+    )
+    if not target_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found.",
+        )
+
+    employee_id = payload.employee_id
+    if employee_id is None:
+        current_employee = db.scalar(
+            select(Employee).where(
+                Employee.user_id == target_user.id,
+                Employee.tenant_id == tenant_id,
+            )
+        )
+        if current_employee:
+            current_employee.user_id = None
+            current_employee.is_user = False
+    else:
+        employee = db.scalar(
+            select(Employee).where(
+                Employee.id == employee_id,
+                Employee.tenant_id == tenant_id,
+            )
+        )
+        if not employee:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Employee not found.",
+            )
+        if employee.user_id and employee.user_id != target_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Employee already linked to a user.",
+            )
+
+        current_employee = db.scalar(
+            select(Employee).where(
+                Employee.user_id == target_user.id,
+                Employee.tenant_id == tenant_id,
+            )
+        )
+        if current_employee and current_employee.id != employee.id:
+            current_employee.user_id = None
+            current_employee.is_user = False
+        employee.user_id = target_user.id
+        employee.is_user = True
+
+    db.commit()
+
+    roles = db.scalars(
+        select(Role.name)
+        .join(UserRole, Role.id == UserRole.role_id)
+        .where(UserRole.user_id == target_user.id)
+    ).all()
+    employee_summary = _get_employee_summary(db, tenant_id, target_user.id)
+
+    return TenantUserResponse(
+        id=target_user.id,
+        first_name=target_user.first_name,
+        last_name=target_user.last_name,
+        email=target_user.email,
+        account_type=target_user.account_type,
+        created_at=target_user.created_at,
+        roles=roles,
+        must_change_password=target_user.must_change_password,
+        employee=employee_summary,
     )
 
 
