@@ -14,6 +14,11 @@ DEFAULT_MANAGER_PERMISSIONS = {
     "workspaces:read",
     "profile:read",
     "profile:write",
+    "work_schedule_groups:read",
+    "leave_types:read",
+    "leave_defaults:read",
+    "leave_entitlements:read",
+    "leave_entitlements:write",
 }
 DEFAULT_STAFF_PERMISSIONS = {
     "erp:dashboard:read",

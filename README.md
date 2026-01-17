@@ -86,3 +86,59 @@ curl.exe -X GET "$base/settings/company/logo" `
 curl.exe -X GET "$base/employees/unlinked-users" `
   -H "Authorization: Bearer $token"
 ```
+
+## Leave + Work Schedules + Remember Me Examples (PowerShell)
+
+```powershell
+# ERP login with remember_me
+curl.exe -X POST "$base/auth/login" `
+  -H "Content-Type: application/json" `
+  -d "{`"email`":`"ava@acme.co`",`"password`":`"Password123!`",`"remember_me`":true}"
+
+# Create work schedule group
+curl.exe -X POST "$base/employee/settings/work-schedule-groups" `
+  -H "Authorization: Bearer $token" `
+  -H "Content-Type: application/json" `
+  -d "{`"name`":`"Office Weekdays`",`"description`":`"Mon-Fri full, weekends off`"}"
+
+# Update work schedule group schedule (7 entries)
+$groupId = "<group_id>"
+curl.exe -X PUT "$base/employee/settings/work-schedule-groups/$groupId/schedule" `
+  -H "Authorization: Bearer $token" `
+  -H "Content-Type: application/json" `
+  -d "[{`"day_of_week`":0,`"day_type`":`"off`"},{`"day_of_week`":1,`"day_type`":`"full`"},{`"day_of_week`":2,`"day_type`":`"full`"},{`"day_of_week`":3,`"day_type`":`"full`"},{`"day_of_week`":4,`"day_type`":`"full`"},{`"day_of_week`":5,`"day_type`":`"full`"},{`"day_of_week`":6,`"day_type`":`"off`"}]"
+
+# Assign employee to group schedule
+$employeeId = "<employee_id>"
+curl.exe -X PUT "$base/employees/$employeeId/work-schedule" `
+  -H "Authorization: Bearer $token" `
+  -H "Content-Type: application/json" `
+  -d "{`"mode`":`"group`",`"work_schedule_group_id`":`"$groupId`"}"
+
+# Set employee custom schedule
+curl.exe -X PUT "$base/employees/$employeeId/work-schedule" `
+  -H "Authorization: Bearer $token" `
+  -H "Content-Type: application/json" `
+  -d "{`"mode`":`"custom`",`"custom_days`":[{`"day_of_week`":0,`"day_type`":`"off`"},{`"day_of_week`":1,`"day_type`":`"full`"},{`"day_of_week`":2,`"day_type`":`"full`"},{`"day_of_week`":3,`"day_type`":`"full`"},{`"day_of_week`":4,`"day_type`":`"full`"},{`"day_of_week`":5,`"day_type`":`"half`"},{`"day_of_week`":6,`"day_type`":`"off`"}]}"
+
+# Create leave type
+curl.exe -X POST "$base/employee/settings/leave-types" `
+  -H "Authorization: Bearer $token" `
+  -H "Content-Type: application/json" `
+  -d "{`"name`":`"Annual Leave`",`"is_prorated`":false,`"is_annual_reset`":true}"
+
+# Replace leave defaults (year 1-3 shown)
+$leaveTypeId = "<leave_type_id>"
+curl.exe -X PUT "$base/employee/settings/leave-defaults" `
+  -H "Authorization: Bearer $token" `
+  -H "Content-Type: application/json" `
+  -d "{`"leave_type_id`":`"$leaveTypeId`",`"rows`":[{`"service_year`":1,`"days`":7},{`"service_year`":2,`"days`":10},{`"service_year`":3,`"days`":12}]}"
+
+# Load employee entitlements from defaults
+curl.exe -X POST "$base/employees/$employeeId/leave-entitlements/load-defaults" `
+  -H "Authorization: Bearer $token"
+
+# List employee entitlements
+curl.exe -X GET "$base/employees/$employeeId/leave-entitlements" `
+  -H "Authorization: Bearer $token"
+```

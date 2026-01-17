@@ -11,6 +11,8 @@ import app.models.settings  # noqa: F401
 import app.models.employees  # noqa: F401
 import app.models.holidays  # noqa: F401
 import app.models.dropdowns  # noqa: F401
+import app.models.work_schedules  # noqa: F401
+import app.models.leave  # noqa: F401
 
 config = context.config
 

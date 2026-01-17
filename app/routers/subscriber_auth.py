@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -16,6 +18,12 @@ from security import (
 )
 
 router = APIRouter(prefix="/subscriber", tags=["subscriber"])
+
+
+def _token_ttl(remember_me: bool | None) -> timedelta:
+    if remember_me:
+        return timedelta(days=7)
+    return timedelta(hours=12)
 
 
 def _build_full_name(first_name: str, last_name: str) -> str:
@@ -72,7 +80,11 @@ def subscriber_register(
             detail=str(exc),
         ) from exc
 
-    token = create_access_token(subject=str(user.id), tenant_id=str(user.tenant_id))
+    token = create_access_token(
+        subject=str(user.id),
+        tenant_id=str(user.tenant_id),
+        expires_in=_token_ttl(payload.remember_me),
+    )
     return TokenResponse(access_token=token)
 
 
@@ -92,5 +104,9 @@ def subscriber_login(
             detail="Invalid credentials.",
         )
 
-    token = create_access_token(subject=str(user.id), tenant_id=str(user.tenant_id))
+    token = create_access_token(
+        subject=str(user.id),
+        tenant_id=str(user.tenant_id),
+        expires_in=_token_ttl(payload.remember_me),
+    )
     return TokenResponse(access_token=token)

@@ -1,5 +1,5 @@
 steps:
   - name: "gcr.io/cloud-builders/docker"
-    args: ["build", "-f", "Dockerfile.migrate", "-t", "asia-southeast1-docker.pkg.dev/skylynx-erp/skylynx-tools/skylynx-migrate:8", "."]
+    args: ["build", "-f", "Dockerfile.migrate", "-t", "asia-southeast1-docker.pkg.dev/skylynx-erp/skylynx-tools/skylynx-migrate:9", "."]
 images:
-  - "asia-southeast1-docker.pkg.dev/skylynx-erp/skylynx-tools/skylynx-migrate:8"
+  - "asia-southeast1-docker.pkg.dev/skylynx-erp/skylynx-tools/skylynx-migrate:9"

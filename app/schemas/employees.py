@@ -1,9 +1,10 @@
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Literal
 import uuid
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
+from app.schemas.work_schedules import WorkScheduleEntry, WorkScheduleMode
 
 
 class EmployeeBase(BaseModel):
@@ -54,6 +55,9 @@ class EmployeeResponse(EmployeeBase):
     id: uuid.UUID
     tenant_id: uuid.UUID
     employee_code: str
+    work_schedule_mode: WorkScheduleMode | None = None
+    work_schedule_group_id: uuid.UUID | None = None
+    work_schedule_days: list[WorkScheduleEntry] | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
@@ -77,19 +81,6 @@ class EmployeeSalaryHistoryResponse(BaseModel):
     amount: Decimal
     start_date: date
     end_date: date | None = None
-
-
-class WorkScheduleEntry(BaseModel):
-    day_of_week: int = Field(..., ge=0, le=6)
-    day_type: Literal["off", "full", "half"]
-
-
-class WorkScheduleResponse(BaseModel):
-    entries: list[WorkScheduleEntry]
-
-
-class WorkScheduleUpdateRequest(BaseModel):
-    entries: list[WorkScheduleEntry]
 
 
 class EmployeeIdFormatResponse(BaseModel):

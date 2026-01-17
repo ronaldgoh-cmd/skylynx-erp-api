@@ -1,5 +1,6 @@
 import logging
 import os
+from datetime import timedelta
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,6 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.routers.dropdowns import router as dropdown_router
+from app.routers.employee_settings import router as employee_settings_router
 from app.routers.employees import router as employees_router
 from app.routers.holidays import router as holidays_router
 from app.routers.profile import router as profile_router
@@ -67,6 +69,12 @@ def _split_full_name(full_name: str) -> tuple[str | None, str | None]:
     return parts[0], " ".join(parts[1:])
 
 
+def _token_ttl(remember_me: bool | None) -> timedelta:
+    if remember_me:
+        return timedelta(days=7)
+    return timedelta(hours=12)
+
+
 app = FastAPI(title="Skylynx ERP API")
 
 app.add_middleware(
@@ -80,6 +88,7 @@ app.add_middleware(
 
 app.include_router(rbac_router)
 app.include_router(settings_router)
+app.include_router(employee_settings_router)
 app.include_router(employees_router)
 app.include_router(holidays_router)
 app.include_router(dropdown_router)
@@ -208,5 +217,9 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse
             detail="Invalid credentials.",
         )
 
-    token = create_access_token(subject=str(user.id), tenant_id=str(user.tenant_id))
+    token = create_access_token(
+        subject=str(user.id),
+        tenant_id=str(user.tenant_id),
+        expires_in=_token_ttl(payload.remember_me),
+    )
     return TokenResponse(access_token=token)

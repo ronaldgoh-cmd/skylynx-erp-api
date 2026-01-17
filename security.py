@@ -32,13 +32,15 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 
-def create_access_token(subject: str, tenant_id: str, expires_in_hours: int = 24) -> str:
+def create_access_token(subject: str, tenant_id: str, expires_in: timedelta | None = None) -> str:
     now = datetime.now(timezone.utc)
+    if expires_in is None:
+        expires_in = timedelta(hours=12)
     payload = {
         "sub": subject,
         "tenant_id": tenant_id,
         "iat": int(now.timestamp()),
-        "exp": int((now + timedelta(hours=expires_in_hours)).timestamp()),
+        "exp": int((now + expires_in).timestamp()),
     }
     return jwt.encode(payload, _get_jwt_secret(), algorithm=JWT_ALGORITHM)
 

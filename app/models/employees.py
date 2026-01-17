@@ -48,6 +48,12 @@ class Employee(Base):
     holiday_group_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("holiday_groups.id")
     )
+    work_schedule_group_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("work_schedule_groups.id")
+    )
+    work_schedule_mode: Mapped[str] = mapped_column(
+        String(10), default="custom", nullable=False
+    )
     bank_name: Mapped[str | None] = mapped_column(String(100))
     bank_account_number: Mapped[str | None] = mapped_column(String(100))
     payment_method: Mapped[str | None] = mapped_column(Text)
@@ -71,6 +77,12 @@ class Employee(Base):
         back_populates="employee", cascade="all, delete-orphan"
     )
     holiday_group: Mapped["HolidayGroup"] = relationship("HolidayGroup")
+    work_schedule_group: Mapped["WorkScheduleGroup"] = relationship(
+        "WorkScheduleGroup", back_populates="employees"
+    )
+    leave_entitlements: Mapped[list["EmployeeLeaveEntitlement"]] = relationship(
+        "EmployeeLeaveEntitlement", back_populates="employee", cascade="all, delete-orphan"
+    )
 
 
 class EmployeeSalaryHistory(Base):
